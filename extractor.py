@@ -1,12 +1,29 @@
 """
 Document extraction agent — core logic.
 
-Takes a photo or scan of an invoice/receipt/claim document and returns
-clean, structured data plus a list of anomaly flags a human should check.
+Takes a photo, scan, or PDF of an invoice/receipt/claim document and
+returns clean, structured data plus a list of anomaly flags a human
+should check. Persists everything to a real SQLite database (db.py).
 
-Swap the `record_seen_invoice` / `has_seen_invoice` functions for a real
-database lookup in production (currently uses a local JSON file) so
-duplicate-invoice detection works across restarts and across users.
+--- Customizing EXTRACTION_TOOL for a specific industry ---
+
+The schema below is generic (works for any invoice/receipt). For a real
+client, add fields specific to their documents. Two examples:
+
+  Insurance claims — add to the "properties" dict:
+    "policy_number": {"type": "string"},
+    "claimant_name": {"type": "string"},
+    "incident_date": {"type": "string", "description": "ISO date"},
+
+  Logistics / freight — add to the "properties" dict:
+    "waybill_number": {"type": "string"},
+    "origin": {"type": "string"},
+    "destination": {"type": "string"},
+    "weight_kg": {"type": "number"},
+
+After adding fields, also add matching validation rules in `validate()`
+below if the field should trigger a flag when missing or wrong (e.g.
+flag any insurance claim with no policy_number).
 """
 
 import base64
@@ -18,11 +35,12 @@ from pathlib import Path
 from dotenv import load_dotenv
 import anthropic
 
+import db
+
 load_dotenv()
 
 DATA_DIR = Path(__file__).parent / "data"
 DATA_DIR.mkdir(exist_ok=True)
-SEEN_INVOICES_FILE = DATA_DIR / "seen_invoices.json"
 
 client = anthropic.Anthropic()
 MODEL = "claude-sonnet-4-6"
@@ -67,16 +85,37 @@ EXTRACTION_TOOL = {
 }
 
 
-def _encode_image(path: Path) -> dict:
-    media_type = mimetypes.guess_type(str(path))[0] or "image/png"
+SUPPORTED_IMAGE_TYPES = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+SUPPORTED_DOC_TYPES = {".pdf"}
+
+
+def _build_content_block(path: Path) -> dict:
+    """
+    Builds the right content block for the file type. Images go in as
+    "image" blocks; PDFs go in as "document" blocks — Claude reads PDFs
+    natively (both the text and the visual layout of each page), no
+    conversion needed. Max 32MB / 600 pages per Anthropic's limits.
+    """
+    suffix = path.suffix.lower()
     data = base64.standard_b64encode(path.read_bytes()).decode("utf-8")
-    return {"type": "base64", "media_type": media_type, "data": data}
+
+    if suffix in SUPPORTED_DOC_TYPES:
+        return {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": data}}
+
+    if suffix in SUPPORTED_IMAGE_TYPES:
+        media_type = mimetypes.guess_type(str(path))[0] or "image/png"
+        return {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": data}}
+
+    raise ValueError(
+        f"Unsupported file type '{suffix}'. Supported: "
+        f"{', '.join(sorted(SUPPORTED_IMAGE_TYPES | SUPPORTED_DOC_TYPES))}"
+    )
 
 
 def extract(file_path: str) -> dict:
-    """Runs the document through Claude's vision to pull structured fields."""
+    """Runs the document through Claude to pull structured fields (image or PDF)."""
     path = Path(file_path)
-    image_source = _encode_image(path)
+    content_block = _build_content_block(path)
 
     response = client.messages.create(
         model=MODEL,
@@ -87,14 +126,16 @@ def extract(file_path: str) -> dict:
             {
                 "role": "user",
                 "content": [
-                    {"type": "image", "source": image_source},
+                    content_block,
                     {
                         "type": "text",
                         "text": (
                             "Extract all structured data from this invoice/receipt/claim "
-                            "document using the record_invoice_data tool. Be precise with "
-                            "numbers. If something is unclear or missing, say so in notes "
-                            "and lower your extraction_confidence rather than guessing."
+                            "document using the record_invoice_data tool. If it's a "
+                            "multi-page PDF, use the first page that looks like the main "
+                            "invoice/receipt. Be precise with numbers. If something is "
+                            "unclear or missing, say so in notes and lower your "
+                            "extraction_confidence rather than guessing."
                         ),
                     },
                 ],
@@ -107,18 +148,6 @@ def extract(file_path: str) -> dict:
             return block.input
 
     raise RuntimeError("Model did not return structured extraction data.")
-
-
-def _load_seen_invoices() -> set:
-    if SEEN_INVOICES_FILE.exists():
-        return set(json.loads(SEEN_INVOICES_FILE.read_text()))
-    return set()
-
-
-def _mark_seen(invoice_number: str):
-    seen = _load_seen_invoices()
-    seen.add(invoice_number)
-    SEEN_INVOICES_FILE.write_text(json.dumps(sorted(seen), indent=2))
 
 
 def validate(extracted: dict) -> list[str]:
@@ -143,13 +172,10 @@ def validate(extracted: dict) -> list[str]:
                 f"Total ({total}) doesn't match subtotal + tax ({expected}) — possible error or fraud."
             )
 
-    # Duplicate invoice detection
+    # Duplicate invoice detection (checked against the database, not a JSON file)
     invoice_number = extracted.get("invoice_number")
-    if invoice_number:
-        if invoice_number in _load_seen_invoices():
-            flags.append(f"Invoice number '{invoice_number}' has been seen before — possible duplicate submission.")
-        else:
-            _mark_seen(invoice_number)
+    if invoice_number and db.has_seen_invoice(invoice_number):
+        flags.append(f"Invoice number '{invoice_number}' has been seen before — possible duplicate submission.")
 
     # Low confidence extraction
     if extracted.get("extraction_confidence") == "low":
@@ -166,5 +192,6 @@ def validate(extracted: dict) -> list[str]:
 
 def process_document(file_path: str) -> dict:
     extracted = extract(file_path)
-    flags = validate(extracted)
+    flags = validate(extracted)  # checks against DB for duplicates BEFORE this doc is saved
+    db.record_document(extracted, flags)  # now save it, so future duplicates get caught
     return {"extracted": extracted, "flags": flags}

@@ -19,7 +19,10 @@ Manual invoice/claim processing is slow and error-prone:
 
 ## What the agent does
 
-- **Extracts structured data** from a photo or scan: vendor, invoice number,
+- **Reads images and PDFs** — photos, scans, or native PDF invoices/receipts
+  (Claude processes PDFs natively, both text and visual layout, up to
+  32MB/600 pages — no separate conversion step needed)
+- **Extracts structured data**: vendor, invoice number,
   date, line items, subtotal, tax, total, currency
 - **Flags anomalies automatically**:
   - Totals that don't match subtotal + tax
@@ -37,13 +40,28 @@ pip install -r requirements.txt
 cp .env.example .env
 # edit .env and add your real ANTHROPIC_API_KEY
 
-python generate_sample.py                          # creates 2 test documents
-python demo.py sample_documents/invoice_clean.png   # should extract cleanly
-python demo.py sample_documents/invoice_suspicious.png  # should raise flags
+python generate_sample.py   # creates 2 test documents
+```
+
+**Option A — browser demo (use this one for client demos / videos):**
+
+```bash
+uvicorn web_app:app --reload --port 8000
+```
+
+Open http://localhost:8000, drag in `sample_documents/invoice_clean.png`,
+then try `sample_documents/invoice_suspicious.png` to see the flagging
+happen live in the browser.
+
+**Option B — command line:**
+
+```bash
+python demo.py sample_documents/invoice_clean.png
+python demo.py sample_documents/invoice_suspicious.png
 ```
 
 The "suspicious" sample is deliberately broken (future-dated, total doesn't
-match subtotal + tax) so you can see the flagging in action.
+match subtotal + tax) so you can see the flagging in action either way.
 
 ## Architecture
 
@@ -62,15 +80,26 @@ Photo/scan of invoice
 
 ## Adapting this for a real client
 
-1. Swap `data/seen_invoices.json` for a real database so duplicate
-   detection works properly across many users and restarts
-2. Add a step to push extracted data into their actual system —
-   Google Sheets, QuickBooks, Zoho, or a plain CSV export
-3. Extend `EXTRACTION_TOOL`'s schema in `extractor.py` for
-   industry-specific fields (e.g. policy number for insurance claims,
-   waybill number for logistics)
-4. For scanned PDFs (not just images), add a PDF-to-image conversion
-   step before calling `extract()`
+1. **Database** — already done: `db.py` uses a real SQLite database
+   (`data/documents.db`) instead of a JSON file, so duplicate-invoice
+   detection survives restarts. Every processed document is saved with
+   its full extracted data. For a client with multiple people hitting
+   this from different machines, swap SQLite for Postgres (same function
+   signatures in `db.py`, just a different connection).
+
+2. **Exporting to their system** — already done for CSV: run
+   `python export_csv.py` any time to export everything processed so far
+   to `data/export.csv`, which opens directly in Excel or imports into
+   QuickBooks/Zoho/Google Sheets. `demo.py` runs this automatically after
+   each batch. For a client who wants it pushed automatically (no manual
+   import step), see the notes at the bottom of `export_csv.py` for
+   wiring up the Google Sheets, QuickBooks, or Zoho APIs directly.
+
+3. **Industry-specific fields** — see the docstring at the top of
+   `extractor.py` for concrete examples (insurance claim fields,
+   logistics/freight fields) and how to add matching validation rules.
+
+4. **PDFs** — already handled natively; see "What the agent does" above.
 
 ## Stack
 

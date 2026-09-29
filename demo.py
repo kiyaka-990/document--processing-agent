@@ -12,6 +12,7 @@ import json
 import glob
 
 from extractor import process_document
+from export_csv import export as export_csv
 
 
 def print_report(file_path: str, result: dict):
@@ -43,12 +44,18 @@ def main():
         matches = glob.glob(arg)
         file_paths.extend(matches if matches else [arg])
 
+    processed_any = False
     for file_path in file_paths:
         try:
             result = process_document(file_path)
             print_report(file_path, result)
+            processed_any = True
         except Exception as e:
             print(f"\nFailed to process {file_path}: {e}")
+
+    if processed_any:
+        print()
+        export_csv()  # writes/updates data/export.csv with everything in the database so far
 
 
 if __name__ == "__main__":

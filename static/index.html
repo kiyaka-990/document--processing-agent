@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Document Intake</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #14201B;
+    --ink-soft: #566058;
+    --ink-faint: #8C948B;
+    --teal: #14534A;
+    --teal-deep: #0A3129;
+    --teal-soft: rgba(20, 83, 74, 0.10);
+    --gold: #B8862E;
+    --gold-soft: rgba(184, 134, 46, 0.12);
+    --line: rgba(20, 32, 27, 0.10);
+    --line-soft: rgba(20, 32, 27, 0.06);
+    --glass: rgba(255, 255, 255, 0.68);
+    --glass-strong: rgba(255, 255, 255, 0.86);
+    --amber: #8A5A0C;
+    --amber-bg: #FBF1E1;
+    --rust: #8C2F1D;
+    --rust-bg: #FBEAE6;
+    --shadow-sm: 0 1px 2px rgba(14, 24, 20, 0.05);
+    --shadow-lg: 0 20px 60px -20px rgba(10, 49, 41, 0.35), 0 4px 16px rgba(14, 24, 20, 0.06);
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    margin: 0;
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    background: #EDEFE9;
+    position: relative;
+  }
+
+  /* --- Animated gradient mesh background --- */
+  .mesh-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    background: #EDEFE9;
+  }
+
+  .mesh-bg::before,
+  .mesh-bg::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.55;
+  }
+
+  .mesh-bg::before {
+    width: 900px; height: 900px;
+    top: -320px; left: -200px;
+    background: radial-gradient(circle at 30% 30%, #1B6B5D, transparent 70%);
+    animation: drift1 26s ease-in-out infinite alternate;
+  }
+
+  .mesh-bg::after {
+    width: 800px; height: 800px;
+    bottom: -300px; right: -220px;
+    background: radial-gradient(circle at 70% 70%, #D3A24C, transparent 70%);
+    animation: drift2 30s ease-in-out infinite alternate;
+  }
+
+  .mesh-blob-3 {
+    position: absolute;
+    width: 650px; height: 650px;
+    top: 20%; right: 8%;
+    border-radius: 50%;
+    background: radial-gradient(circle, #0E3B34, transparent 72%);
+    filter: blur(90px);
+    opacity: 0.35;
+    animation: drift3 34s ease-in-out infinite alternate;
+  }
+
+  @keyframes drift1 {
+    from { transform: translate(0, 0) scale(1); }
+    to   { transform: translate(60px, 40px) scale(1.08); }
+  }
+  @keyframes drift2 {
+    from { transform: translate(0, 0) scale(1); }
+    to   { transform: translate(-50px, -30px) scale(1.05); }
+  }
+  @keyframes drift3 {
+    from { transform: translate(0, 0) scale(1); }
+    to   { transform: translate(-40px, 50px) scale(0.95); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mesh-bg::before, .mesh-bg::after, .mesh-blob-3 { animation: none; }
+  }
+
+  /* --- Top bar --- */
+  .topbar { position: relative; z-index: 2; }
+
+  .topbar-inner {
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 22px 28px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .mark {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--teal), var(--teal-deep));
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 6px 16px -4px rgba(10, 49, 41, 0.5);
+  }
+  .mark svg { width: 19px; height: 19px; }
+
+  .brand-text h1 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 17px; margin: 0; line-height: 1.2; }
+  .brand-text p { margin: 1px 0 0; font-size: 12.5px; color: var(--ink-faint); }
+
+  .export-btn {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 7px;
+    background: var(--glass-strong);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--line);
+    color: var(--ink); font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13.5px; font-weight: 500;
+    padding: 9px 16px; border-radius: 999px; cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    box-shadow: var(--shadow-sm);
+  }
+  .export-btn:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+  .export-btn svg { width: 15px; height: 15px; }
+
+  /* --- Hero --- */
+  .hero {
+    position: relative;
+    z-index: 2;
+    max-width: 1140px;
+    margin: 0 auto;
+    padding: 56px 28px 0;
+    animation: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .eyebrow-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--glass-strong);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--line);
+    padding: 6px 13px 6px 10px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    color: var(--teal-deep);
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .pulse-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #2F9E6E;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .pulse-dot::after {
+    content: "";
+    position: absolute; inset: -4px;
+    border-radius: 50%;
+    background: #2F9E6E;
+    opacity: 0.4;
+    animation: pulse 2s ease-out infinite;
+  }
+  @keyframes pulse {
+    0% { transform: scale(0.6); opacity: 0.5; }
+    100% { transform: scale(2.2); opacity: 0; }
+  }
+
+  .hero h2 {
+    font-family: 'Fraunces', serif; font-weight: 500; font-size: 42px;
+    line-height: 1.14; margin: 0 0 14px; letter-spacing: -0.015em; max-width: 18ch;
+  }
+  .hero p { font-size: 16px; color: var(--ink-soft); max-width: 56ch; line-height: 1.65; margin: 0; }
+
+  /* --- Layout --- */
+  .layout {
+    position: relative; z-index: 2;
+    max-width: 1140px; margin: 0 auto; padding: 36px 28px 100px;
+    display: grid; grid-template-columns: 350px 1fr; gap: 22px; align-items: start;
+  }
+  @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--glass);
+    backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.6);
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .dropzone {
+    padding: 34px 20px; text-align: center; cursor: pointer;
+    border-bottom: 1px solid var(--line-soft);
+    border-radius: 16px 16px 0 0;
+    transition: background 0.2s ease;
+    position: relative;
+  }
+  .dropzone.dragover { background: var(--teal-soft); }
+
+  .dropzone-icon-wrap {
+    width: 52px; height: 52px;
+    margin: 0 auto 14px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--teal-soft), var(--gold-soft));
+    display: flex; align-items: center; justify-content: center;
+  }
+  .dropzone-icon { width: 22px; height: 22px; color: var(--teal); }
+
+  .dropzone strong { display: block; font-size: 14.5px; margin-bottom: 3px; }
+  .dropzone span { font-size: 12.5px; color: var(--ink-faint); }
+  input[type="file"] { display: none; }
+
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10.5px;
+    color: var(--ink-faint); padding: 16px 20px 8px; letter-spacing: 0.04em;
+  }
+
+  .sample-row { display: flex; align-items: center; gap: 12px; padding: 8px 20px; cursor: pointer; transition: background 0.12s ease; }
+  .sample-row:hover { background: var(--line-soft); }
+  .sample-thumb {
+    width: 36px; height: 44px; object-fit: cover;
+    border: 1px solid var(--line); border-radius: 5px;
+    background: #fff; flex-shrink: 0;
+    transition: transform 0.15s ease;
+  }
+  .sample-row:hover .sample-thumb { transform: scale(1.05); }
+  .sample-name { font-size: 13.5px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .history-list { padding-bottom: 16px; }
+  .history-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px 20px;
+    cursor: pointer; border-left: 2px solid transparent; transition: background 0.12s ease;
+  }
+  .history-item:hover { background: var(--line-soft); }
+  .history-item.active { background: var(--teal-soft); border-left-color: var(--teal); }
+
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot.clean { background: #2F9E6E; }
+  .dot.flagged { background: var(--amber); }
+  .dot.error { background: var(--rust); }
+
+  .history-text { overflow: hidden; }
+  .history-name { font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .history-meta { font-size: 11.5px; color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; }
+
+  .right-panel { min-height: 440px; padding: 30px; }
+
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; min-height: 380px; color: var(--ink-faint);
+  }
+  .empty-state-icon-wrap {
+    width: 64px; height: 64px; border-radius: 18px;
+    background: linear-gradient(135deg, var(--teal-soft), var(--gold-soft));
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 18px;
+  }
+  .empty-state-icon-wrap svg { width: 28px; height: 28px; color: var(--teal); }
+  .empty-state strong { color: var(--ink); font-size: 15px; display: block; margin-bottom: 4px; }
+  .empty-state span { font-size: 13px; }
+
+  .loading-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 380px; gap: 16px;
+  }
+  .spinner {
+    width: 30px; height: 30px; border: 2.5px solid var(--line);
+    border-top-color: var(--teal); border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-state span { font-size: 13.5px; color: var(--ink-soft); font-family: 'IBM Plex Mono', monospace; }
+
+  .result-header {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+    padding-bottom: 22px; margin-bottom: 22px; border-bottom: 1px solid var(--line-soft);
+  }
+  .result-header h2 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 23px; margin: 0 0 4px; }
+  .result-sub { font-size: 13px; color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; }
+
+  .badge {
+    font-size: 12px; font-family: 'IBM Plex Mono', monospace; padding: 6px 13px;
+    border-radius: 999px; white-space: nowrap; flex-shrink: 0;
+  }
+  .badge.clean { background: linear-gradient(135deg, var(--teal-soft), rgba(20,83,74,0.05)); color: var(--teal-deep); }
+  .badge.flagged { background: var(--amber-bg); color: var(--amber); }
+  .badge.error { background: var(--rust-bg); color: var(--rust); }
+
+  .field-grid {
+    display: grid; grid-template-columns: 140px 1fr; row-gap: 11px; column-gap: 16px;
+    font-size: 14px; margin-bottom: 24px;
+  }
+  .field-label { color: var(--ink-faint); font-size: 13px; }
+  .field-value { font-family: 'IBM Plex Mono', monospace; font-size: 13.5px; }
+
+  .line-items { border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); padding: 15px 0; margin-bottom: 20px; }
+  .line-item { display: flex; justify-content: space-between; gap: 12px; font-size: 13.5px; padding: 7px 0; }
+  .line-item .desc { color: var(--ink); }
+  .line-item .amt { font-family: 'IBM Plex Mono', monospace; color: var(--ink-soft); flex-shrink: 0; }
+
+  .totals {
+    display: flex; flex-direction: column; gap: 6px; align-items: flex-end;
+    font-family: 'IBM Plex Mono', monospace; font-size: 13.5px; color: var(--ink-soft); margin-bottom: 24px;
+  }
+  .totals .grand { font-size: 19px; font-weight: 500; color: var(--teal-deep); margin-top: 2px; }
+
+  .flags-block h3 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 16px; margin: 0 0 12px; }
+
+  .flag-item {
+    display: flex; gap: 10px; background: var(--amber-bg); padding: 12px 15px;
+    border-radius: 10px; font-size: 13.5px; line-height: 1.5; margin-bottom: 8px; color: #5C3C08;
+  }
+  .flag-item svg { flex-shrink: 0; margin-top: 1px; width: 15px; height: 15px; color: var(--amber); }
+
+  .clean-note, .error-note {
+    display: flex; gap: 10px; padding: 12px 15px; border-radius: 10px; font-size: 13.5px;
+  }
+  .clean-note { background: linear-gradient(135deg, var(--teal-soft), rgba(20,83,74,0.03)); color: var(--teal-deep); }
+  .error-note { background: var(--rust-bg); color: var(--rust); }
+  .clean-note svg, .error-note svg { flex-shrink: 0; margin-top: 1px; width: 15px; height: 15px; }
+
+  footer {
+    position: relative; z-index: 2;
+    max-width: 1140px; margin: 0 auto; padding: 0 28px 48px;
+    font-size: 12.5px; color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace;
+  }
+</style>
+</head>
+<body>
+  <div class="mesh-bg"><div class="mesh-blob-3"></div></div>
+
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8"><path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/><path d="M8 13h8M8 17h5"/></svg>
+      </div>
+      <div class="brand-text">
+        <h1>Document Intake</h1>
+        <p>AI extraction &amp; review agent</p>
+      </div>
+      <a class="export-btn" href="/api/export.csv" download>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 4v11M12 15l-4-4M12 15l4-4"/><path d="M4 17v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+        Download CSV
+      </a>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div class="eyebrow-pill"><span class="pulse-dot"></span> Live demo — powered by Claude</div>
+    <h2>Drop in an invoice. Watch it read itself.</h2>
+    <p>Upload a photo or scan of an invoice, receipt, or claim document. The agent extracts every field and flags anything that needs a second look — before it reaches a human.</p>
+  </div>
+
+  <div class="layout">
+    <div class="left-col">
+      <div class="panel">
+        <div class="dropzone" id="dropzone">
+          <div class="dropzone-icon-wrap">
+            <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>
+          </div>
+          <strong>Drop a document here</strong>
+          <span>or click to browse — PNG, JPG, or PDF</span>
+          <input type="file" id="fileInput" accept="image/*,.pdf,application/pdf" />
+        </div>
+
+        <div class="section-label" id="samplesLabel" style="display:none;">Quick-load samples</div>
+        <div id="samplesList"></div>
+
+        <div class="section-label" id="historyLabel" style="display:none;">Session history</div>
+        <div class="history-list" id="historyList"></div>
+      </div>
+    </div>
+
+    <div class="right-col">
+      <div class="panel right-panel" id="rightPanel">
+        <div class="empty-state" id="emptyState">
+          <div class="empty-state-icon-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3h9l5 5v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5"/><path d="M8 13h8M8 17h5"/></svg>
+          </div>
+          <strong>Results will appear here</strong>
+          <span>Upload a document or try a quick sample to see it in action</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Powered by Claude (Anthropic) — vision + structured extraction</footer>
+
+<script>
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  const rightPanel = document.getElementById('rightPanel');
+  const samplesList = document.getElementById('samplesList');
+  const samplesLabel = document.getElementById('samplesLabel');
+  const historyList = document.getElementById('historyList');
+  const historyLabel = document.getElementById('historyLabel');
+
+  let history = [];
+  let activeId = null;
+
+  fetch('/api/samples').then(r => r.json()).then(data => {
+    if (!data.samples || !data.samples.length) return;
+    samplesLabel.style.display = 'block';
+    data.samples.forEach(name => {
+      const row = document.createElement('div');
+      row.className = 'sample-row';
+      row.innerHTML = `
+        <img class="sample-thumb" src="/sample-files/${encodeURIComponent(name)}" />
+        <span class="sample-name">${name}</span>
+      `;
+      row.addEventListener('click', () => runSample(name));
+      samplesList.appendChild(row);
+    });
+  }).catch(() => {});
+
+  async function runSample(name) {
+    showLoading();
+    try {
+      const res = await fetch('/api/process_sample', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: name }),
+      });
+      const data = await res.json();
+      addToHistory(name, data);
+    } catch (err) {
+      showError(err.message);
+    }
+  }
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+  dropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) handleFile(fileInput.files[0]);
+  });
+
+  async function handleFile(file) {
+    showLoading();
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await fetch('/process', { method: 'POST', body: formData });
+      const data = await res.json();
+      addToHistory(file.name, data);
+    } catch (err) {
+      showError(err.message);
+    }
+  }
+
+  function showLoading() {
+    rightPanel.innerHTML = `
+      <div class="loading-state">
+        <div class="spinner"></div>
+        <span>Reading document…</span>
+      </div>`;
+  }
+
+  function showError(message) {
+    rightPanel.innerHTML = `
+      <div class="error-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+        <span>Request failed: ${message}</span>
+      </div>`;
+  }
+
+  function addToHistory(label, data) {
+    const id = Date.now() + Math.random();
+    let status = 'clean';
+    if (data.error) status = 'error';
+    else if (data.flags && data.flags.length) status = 'flagged';
+
+    history.unshift({ id, label, data, status });
+    activeId = id;
+    renderHistory();
+    renderResult(data, label, status);
+  }
+
+  function renderHistory() {
+    if (!history.length) return;
+    historyLabel.style.display = 'block';
+    historyList.innerHTML = history.map(h => `
+      <div class="history-item ${h.id === activeId ? 'active' : ''}" data-id="${h.id}">
+        <div class="dot ${h.status}"></div>
+        <div class="history-text">
+          <div class="history-name">${h.label}</div>
+          <div class="history-meta">${h.status === 'clean' ? 'Clean' : h.status === 'flagged' ? (h.data.flags.length + ' flag' + (h.data.flags.length > 1 ? 's' : '')) : 'Error'}</div>
+        </div>
+      </div>
+    `).join('');
+
+    historyList.querySelectorAll('.history-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const item = history.find(h => String(h.id) === el.dataset.id);
+        if (item) {
+          activeId = item.id;
+          renderHistory();
+          renderResult(item.data, item.label, item.status);
+        }
+      });
+    });
+  }
+
+  function fmtMoney(value, currency) {
+    if (value === null || value === undefined) return '—';
+    const num = Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return currency ? `${currency} ${num}` : num;
+  }
+
+  function renderResult(data, label, status) {
+    if (data.error) {
+      rightPanel.innerHTML = `
+        <div class="error-note">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+          <span>Couldn't process this document: ${data.error}</span>
+        </div>`;
+      return;
+    }
+
+    const ex = data.extracted;
+    const flags = data.flags || [];
+    const currency = ex.currency || '';
+    const badgeClass = status === 'clean' ? 'clean' : 'flagged';
+    const badgeText = status === 'clean' ? 'Clean' : `${flags.length} to review`;
+
+    let lineItemsHtml = '';
+    if (ex.line_items && ex.line_items.length) {
+      lineItemsHtml = '<div class="line-items">' + ex.line_items.map(li => `
+        <div class="line-item">
+          <span class="desc">${li.description || ''}${li.quantity ? ' × ' + li.quantity : ''}</span>
+          <span class="amt">${fmtMoney(li.amount, currency)}</span>
+        </div>
+      `).join('') + '</div>';
+    }
+
+    rightPanel.innerHTML = `
+      <div class="result-header">
+        <div>
+          <h2>${ex.vendor_or_issuer || 'Unknown vendor'}</h2>
+          <div class="result-sub">${ex.document_type || 'document'} · ${label}</div>
+        </div>
+        <div class="badge ${badgeClass}">${badgeText}</div>
+      </div>
+
+      <div class="field-grid">
+        <div class="field-label">Invoice #</div><div class="field-value">${ex.invoice_number || '—'}</div>
+        <div class="field-label">Date</div><div class="field-value">${ex.date || '—'}</div>
+        <div class="field-label">Bill to</div><div class="field-value">${ex.bill_to || '—'}</div>
+        <div class="field-label">Payment due</div><div class="field-value">${ex.payment_due || '—'}</div>
+        <div class="field-label">Confidence</div><div class="field-value">${ex.extraction_confidence || '—'}</div>
+      </div>
+
+      ${lineItemsHtml}
+
+      <div class="totals">
+        <div>Subtotal &nbsp; ${fmtMoney(ex.subtotal, currency)}</div>
+        <div>Tax &nbsp; ${fmtMoney(ex.tax, currency)}</div>
+        <div class="grand">Total &nbsp; ${fmtMoney(ex.total, currency)}</div>
+      </div>
+
+      <div class="flags-block">
+        <h3>${flags.length ? 'Needs review' : 'Validation'}</h3>
+        ${flags.length
+          ? flags.map(f => `
+              <div class="flag-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 2.5 17.5a1.5 1.5 0 0 0 1.3 2.25h16.4a1.5 1.5 0 0 0 1.3-2.25L13.7 3.9a1.5 1.5 0 0 0-2.6 0z"/></svg>
+                <span>${f}</span>
+              </div>`).join('')
+          : `<div class="clean-note">
+               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 5-5"/></svg>
+               <span>This document extracted cleanly and passed all checks.</span>
+             </div>`}
+      </div>
+    `;
+  }
+</script>
+</body>
+</html>
